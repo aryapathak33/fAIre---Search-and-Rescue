@@ -1,0 +1,23 @@
+# Training configuration template for train_classifier.py
+# Edit these, then (optionally) load them in your script. Values here are sensible
+# starting points, NOT results. Tune them for your data.
+
+data_dir: "data"          # FILL IN: path with train/ val/ test/ subfolders
+num_classes: 2            # FILL IN: e.g. distress / no_distress
+class_names: ["distress", "no_distress"]   # FILL IN
+
+# training
+epochs: 10
+batch_size: 16
+learning_rate: 0.001
+image_size: 224
+augmentation:
+  horizontal_flip: true
+  color_jitter: 0.2
+
+# evaluation / tuning
+min_precision: 0.85       # false-alarm floor used by tune_threshold.py
+prioritize: "recall"      # FIRE: a miss is costlier than a false alarm
+
+# output
+model_out: "models/fire_model.pt"

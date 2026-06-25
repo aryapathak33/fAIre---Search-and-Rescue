@@ -1,0 +1,9 @@
+# Fill in exact versions once you confirm what your scripts use (pip freeze > requirements.txt)
+numpy
+opencv-python
+Pillow
+# --- pick the framework you retrained in (delete the other) ---
+tensorflow            # if you retrained in TensorFlow/Keras
+# torch                # if you retrained in PyTorch
+# torchvision
+matplotlib
