@@ -1,34 +1,32 @@
-# fAIre — Search-and-Rescue Robot Vision System
+# fAIre — Fire Search & Rescue Rover
 
-> A personal robotics + computer-vision project exploring how a small rover could help search fire-scene environments with camera input, lightweight AI, sensor readings, and flashover-aware risk scoring.
+> A personal robotics and computer-vision project exploring how a small rover could assist in hazardous fire-scene environments using camera input, lightweight AI, sensor readings, and flashover-aware risk scoring.
 
-fAIre started as a hands-on robotics experiment and evolved into a more complete software pipeline: prepare image data, train a lightweight vision model, evaluate it with recall-focused metrics, run inference on images/video/webcam, and combine AI confidence with sensor readings to produce search-priority alerts.
+fAIre started as a hands-on robotics build and gradually evolved into a full software pipeline: prepare image data, train a lightweight vision model, evaluate it with recall-focused metrics, run inference on images/video/webcam, and combine AI confidence with sensor readings to produce practical search-priority alerts.
 
-The project is intentionally built like a prototype, not a perfect finished product. The public repo contains the reusable code and documentation. Large datasets, trained weights, and private/raw test media are kept out of git.
+## Demo video
 
-<!-- YouTube demo slot: when the video is uploaded, uncomment the next line and replace the URL. -->
-<!-- [Watch the fAIre demo on YouTube](https://www.youtube.com/watch?v=YOUR_VIDEO_ID) -->
+<!-- Replace the YouTube URL below with your uploaded demo video link. -->
+[![Watch Demo Video](media/watch_demo_video.png)](https://www.youtube.com/watch?v=YOUR_VIDEO_ID)
+
+[Watch the demo video](https://www.youtube.com/watch?v=YOUR_VIDEO_ID)
 
 ---
 
 ## What the project does
 
-fAIre is organized around a simple idea: a robot in a dangerous environment should not just “detect something.” It should turn camera and sensor input into an alert that is useful to a human operator.
-
-<p align="center">
-  <img src="media/system_overview.png" alt="fAIre system overview" width="820">
-</p>
+fAIre is built around one simple idea: a robot in a dangerous environment should not just “detect something.” It should turn imperfect camera and sensor input into an alert that is useful to a human operator.
 
 Current capabilities:
 
-- **Image classifier training** using PyTorch transfer learning with MobileNetV2.
+- **PyTorch image classification** using MobileNetV2 transfer learning.
 - **Dataset preparation** from raw class folders into train/validation/test splits.
-- **Evaluation** with precision, recall, F1 score, support, and a saved confusion matrix.
+- **Evaluation** with precision, recall, F1 score, support, and confusion matrix output.
 - **Threshold tuning** for a recall-first operating point.
 - **Inference** on image files, video files, or webcam streams using OpenCV.
-- **Risk scoring** that combines model confidence with temperature/smoke/CO-style sensor values.
+- **Risk scoring** that combines model confidence with environmental sensor readings.
 - **Flashover warning index** that estimates rapid fire-growth risk from heat, smoke, gas, oxygen, and temperature-trend signals.
-- **Arduino sensor streaming** sketch for hardware readings over serial.
+- **Arduino sensor streaming** for hardware readings over serial.
 
 <p align="center">
   <img src="media/concept_demo.gif" alt="fAIre concept demo animation" width="760">
@@ -36,40 +34,52 @@ Current capabilities:
 
 ---
 
-## Tech stack
+## Why I built it
 
-| Layer | Tools used | Why it is used |
-|---|---|---|
-| Training | **PyTorch**, torchvision | Transfer learning, checkpointing, reproducible model code |
-| Model | **MobileNetV2** | Lightweight CNN suitable for edge/robotics experiments |
-| Data prep | Python, Pillow | Clean class folders, resize images, create train/val/test splits |
-| Evaluation | scikit-learn, matplotlib | Precision, recall, F1, confusion matrix |
-| Inference | OpenCV, PyTorch | Run on image, video, or webcam frames |
-| Safety logic | Python dataclasses | Transparent risk and flashover scoring |
-| Hardware | Arduino-style serial sketch | Stream simple sensor readings to the AI layer |
-| Testing | pytest | Keep core risk-scoring logic stable |
+The goal was to connect robotics, AI, and emergency-response thinking into one project. Instead of stopping at a basic rover or a basic classifier, fAIre explores how a small robot could collect visual and environmental information, process it with lightweight machine learning, and surface a simple alert that helps guide search priority.
+
+The project is still a prototype. It is not a certified firefighting tool, and it should not be treated like one. The value of the repo is the end-to-end build: data prep, model training, inference, risk scoring, flashover modeling, hardware integration, and documentation.
 
 ---
 
-## System architecture
+## Tech stack
+
+| Layer | Tools used | Purpose |
+|---|---|---|
+| Training | **PyTorch**, torchvision | Transfer learning, checkpointing, reproducible model code |
+| Model | **MobileNetV2** | Lightweight CNN for robotics-style vision experiments |
+| Data prep | Python, Pillow | Clean class folders, resize images, create train/val/test splits |
+| Evaluation | scikit-learn, matplotlib | Precision, recall, F1, confusion matrix |
+| Inference | OpenCV, PyTorch | Run on image, video, or webcam frames |
+| Risk logic | Python dataclasses | Transparent risk and flashover scoring |
+| Hardware | Arduino-style serial sketch | Stream simple sensor readings to the AI layer |
+| Testing | pytest | Keep core scoring logic stable |
+
+---
+
+## System overview
+
+<p align="center">
+  <img src="media/system_overview.png" alt="fAIre system overview" width="760">
+</p>
 
 ```text
-Camera / robot sensors
+Camera frames + sensor readings
         |
         v
-Frame preprocessing + sensor parsing
+Preprocessing and sensor parsing
         |
         v
 PyTorch MobileNetV2 classifier
         |
         v
-Risk engine: model confidence + sensor severity + flashover index
+Risk engine: vision confidence + sensor severity + flashover index
         |
         v
-Search-priority alert for operator
+Search-priority alert for the operator
 ```
 
-The current public version is a **frame-level classifier pipeline**. It predicts whether an input frame appears to contain the target condition, then converts that signal into a structured alert. A future version can swap the classifier for an object detector to localize the person or hazard with bounding boxes.
+The current public version is a **frame-level classifier pipeline**. It predicts whether an input frame appears to contain the target condition, then converts that signal into a structured alert. A future version can swap the classifier for an object detector to localize a person or hazard with bounding boxes.
 
 More detail:
 
@@ -244,7 +254,7 @@ Webcam:
 python inference/detect.py --input 0 --weights models/fire_model.pt --conf 0.50
 ```
 
-The inference script prints JSON-like alert events so the output can later be connected to a dashboard, logger, or radio/command-station interface.
+The inference script prints JSON-like alert events so the output can later be connected to a dashboard, logger, or command-station interface.
 
 Example alert shape:
 
@@ -265,7 +275,7 @@ Example alert shape:
 
 ## Risk and flashover scoring
 
-The model confidence is not the whole system. A robot can also use sensor values to make the alert more useful.
+The model confidence is not the whole system. A robot can also use environmental values to make the alert more useful.
 
 <p align="center">
   <img src="media/risk_score_example.png" alt="Risk score example" width="760">
@@ -277,7 +287,7 @@ The current alert score is intentionally simple and readable:
 risk_score = 0.60 * vision_confidence + 0.25 * sensor_severity + 0.15 * flashover_index
 ```
 
-The flashover index is a project-defined decimal score from `0.00` to `1.00`. It studies the available fire-environment signals and tries to answer a narrower question:
+The flashover index is a project-defined decimal score from `0.00` to `1.00`. It studies fire-environment signals and tries to answer a focused question:
 
 > Are heat, smoke, gas chemistry, oxygen, and temperature trend moving toward rapid fire growth?
 
@@ -287,7 +297,7 @@ The flashover index is a project-defined decimal score from `0.00` to `1.00`. It
 
 Signals used by the flashover module:
 
-- **Temperature / heat flux** — the most important flashover drivers.
+- **Temperature / heat flux** — core fire-growth drivers.
 - **Smoke** — a proxy for pyrolysis, visibility loss, and fire growth.
 - **CO** — a toxic incomplete-combustion gas.
 - **CO2** — a combustion product that can indicate fire involvement and oxygen displacement.
