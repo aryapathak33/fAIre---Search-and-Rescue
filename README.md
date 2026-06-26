@@ -6,7 +6,7 @@
 <!-- Drag a .gif or .mp4 into this README in GitHub's editor and it will embed automatically. -->
 ![FIRE demo](media/demo.gif)
 
-▶️ **Full demo video:** [`[FILL IN: YouTube / Loom link]`]()
+▶️ **Full demo video:** (https://youtu.be/ll3O9wNHNsc)
 
 ---
 
