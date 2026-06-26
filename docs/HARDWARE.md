@@ -1,83 +1,56 @@
-# Hardware build
+# fAIre hardware notes
 
-The hardware side of fAIre is the robot/sensor layer that feeds the AI pipeline.
+The hardware side is intentionally simple so the software can be tested without requiring expensive robotics parts. The current sketch streams sensor readings over serial and lets the Python side decide how to use them.
 
-<p align="center">
-  <img src="../media/system_overview.png" alt="fAIre hardware and AI overview" width="820">
-</p>
+## Current hardware concept
 
-## Prototype concept
+- Small rover / robot chassis
+- Camera or webcam for visual input
+- Microcontroller for sensor polling
+- Temperature sensor
+- Smoke / gas sensor
+- Optional CO sensor
+- Optional VOC / combustible gas sensor
+- Optional oxygen or CO2 sensor for better chemistry awareness
+- Ultrasonic distance sensor for obstacle proximity
 
-The project is designed around a small rover or portable robot platform that can move or be placed into a risky area before a human enters. The robot streams camera frames and sensor readings to the software pipeline.
+## Serial format
 
-The public repo focuses on the reusable software and sensor interface. The exact physical build can change depending on available parts.
-
-## Component map
-
-| Component | Role in the system |
-|---|---|
-| Microcontroller | Reads low-level sensors and streams values over serial |
-| Camera | Provides image/video frames for the CNN pipeline |
-| Distance sensor | Estimates obstacle or wall distance for basic spatial awareness |
-| Smoke/gas sensor | Adds environmental risk context |
-| Temperature sensor | Adds heat severity context |
-| Rover chassis / motors | Mobility layer for the robot prototype |
-| Laptop / edge computer | Runs training, inference, or dashboard software |
-
-## Serial sensor stream
-
-The included Arduino sketch prints comma-separated sensor readings:
+The Arduino sketch prints one comma-separated reading per line:
 
 ```text
-temperature_c,smoke_raw,distance_cm
+temperature_c,smoke_raw,co_raw,voc_raw,distance_cm
 ```
 
-Example stream:
+Example:
 
 ```text
-31.20,420,85.40
-32.15,438,79.10
-33.05,461,74.55
+42.31,510,390,275,84.20
 ```
 
-The Python risk engine can combine those values with vision confidence.
+These raw values can be parsed by Python and passed into the risk engine.
 
-## Arduino sketch
+## Why these sensors?
 
-File:
+- **Camera** gives the AI model visual context.
+- **Temperature** helps identify dangerous heat regions.
+- **Smoke / gas** gives a basic proxy for poor visibility and combustion products.
+- **CO** is useful because incomplete combustion creates toxic carbon monoxide.
+- **VOC / combustible gas** can help study pyrolysis gases from heated materials.
+- **Oxygen / CO2** would make the flashover module more meaningful, but these sensors need calibration.
+- **Distance** helps the rover avoid obstacles.
 
-```text
-hardware/fire_robot_controller.ino
-```
+## Calibration warning
 
-The sketch includes:
-
-- ultrasonic distance measurement,
-- analog smoke/gas reading,
-- analog temperature reading,
-- serial output every 250 ms.
-
-The conversion formulas are intentionally simple so the sketch stays easy to modify for different sensors.
-
-## Hardware-to-software flow
-
-```text
-Sensors + camera
-      |
-      v
-Microcontroller serial stream + video frame
-      |
-      v
-Python inference script
-      |
-      v
-Risk score + priority alert
-```
+MQ-style analog gas sensors are good for learning and demos, but their raw numbers should not be treated as exact ppm without calibration. For a serious fire-safety system, gas sensors would need calibration curves, temperature/humidity compensation, known sensor placement, and validation against real fire-test data.
 
 ## Future hardware upgrades
 
-- Thermal camera input.
-- Better calibrated gas/CO sensor readings.
-- Motor-control loop for autonomous scanning.
-- Live serial parsing inside `inference/detect.py`.
-- On-device inference using Raspberry Pi or Jetson-style hardware.
+- Thermal camera
+- Calibrated CO sensor
+- Calibrated CO2 sensor
+- Oxygen sensor
+- Heat-flux sensor
+- Better chassis and motor driver
+- Live serial parsing inside `inference/detect.py`
+- Onboard compute using Raspberry Pi or Jetson-style hardware

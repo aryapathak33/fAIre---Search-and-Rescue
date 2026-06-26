@@ -1,13 +1,14 @@
-# Media folder
+# Media files
 
-This folder contains diagrams and generated example visuals used in the README and docs.
+This folder contains lightweight visuals used by the README and docs.
 
-Generated files included in the repo:
+Included:
 
-- `system_overview.png`
-- `training_flow.png`
-- `risk_score_example.png`
-- `sample_confusion_matrix.png`
-- `concept_demo.gif`
+- `system_overview.png` — high-level robot pipeline
+- `training_flow.png` — data/training/evaluation flow
+- `risk_score_example.png` — risk-score explanation graphic
+- `flashover_index.png` — flashover index explanation graphic
+- `sample_confusion_matrix.png` — example output format, not a claimed benchmark
+- `concept_demo.gif` — generated concept animation for the public README
 
-Real hardware footage and trained-model output videos can be added later when they are available.
+Large raw video clips and private hardware footage should stay out of git. Upload demo clips to YouTube or keep them locally, then link them from the README.

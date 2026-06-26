@@ -1,3 +1,4 @@
+from inference.flashover_predictor import FlashoverSignals, compute_flashover_index
 from inference.risk_engine import SensorReading, build_alert, compute_risk_score, priority_from_score
 
 
@@ -13,6 +14,27 @@ def test_risk_score_increases_with_smoke():
     assert smoky > clean
 
 
+def test_flashover_index_is_decimal_score():
+    estimate = compute_flashover_index(
+        FlashoverSignals(
+            temperature_c=520,
+            smoke_raw=850,
+            co_raw=780,
+            oxygen_pct=16.5,
+            temp_rise_c_per_min=45,
+        )
+    )
+    assert 0.0 <= estimate.index <= 1.0
+    assert estimate.level in {"low", "guarded", "high", "critical"}
+    assert estimate.index >= 0.65
+
+
+def test_flashover_escalates_near_common_lab_thresholds():
+    estimate = compute_flashover_index(FlashoverSignals(temperature_c=610))
+    assert estimate.index >= 0.95
+    assert estimate.level == "critical"
+
+
 def test_priority_levels():
     assert priority_from_score(0.85) == "critical"
     assert priority_from_score(0.65) == "high"
@@ -26,4 +48,5 @@ def test_alert_shape():
     assert payload["label"] == "distress"
     assert payload["confidence"] == 0.91
     assert "risk_score" in payload
+    assert "flashover_index" in payload
     assert payload["priority"] in {"low", "medium", "high", "critical"}

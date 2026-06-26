@@ -1,20 +1,23 @@
 # fAIre — Search-and-Rescue Robot Vision System
 
-> A personal robotics + computer-vision project exploring how a small rover could help search fire-scene environments with camera input, lightweight AI, and simple sensor-based risk scoring.
-
-<p align="center">
-  <img src="media/system_overview.png" alt="fAIre system overview" width="820">
-</p>
+> A personal robotics + computer-vision project exploring how a small rover could help search fire-scene environments with camera input, lightweight AI, sensor readings, and flashover-aware risk scoring.
 
 fAIre started as a hands-on robotics experiment and evolved into a more complete software pipeline: prepare image data, train a lightweight vision model, evaluate it with recall-focused metrics, run inference on images/video/webcam, and combine AI confidence with sensor readings to produce search-priority alerts.
 
 The project is intentionally built like a prototype, not a perfect finished product. The public repo contains the reusable code and documentation. Large datasets, trained weights, and private/raw test media are kept out of git.
+
+<!-- YouTube demo slot: when the video is uploaded, uncomment the next line and replace the URL. -->
+<!-- [Watch the fAIre demo on YouTube](https://www.youtube.com/watch?v=YOUR_VIDEO_ID) -->
 
 ---
 
 ## What the project does
 
 fAIre is organized around a simple idea: a robot in a dangerous environment should not just “detect something.” It should turn camera and sensor input into an alert that is useful to a human operator.
+
+<p align="center">
+  <img src="media/system_overview.png" alt="fAIre system overview" width="820">
+</p>
 
 Current capabilities:
 
@@ -24,6 +27,7 @@ Current capabilities:
 - **Threshold tuning** for a recall-first operating point.
 - **Inference** on image files, video files, or webcam streams using OpenCV.
 - **Risk scoring** that combines model confidence with temperature/smoke/CO-style sensor values.
+- **Flashover warning index** that estimates rapid fire-growth risk from heat, smoke, gas, oxygen, and temperature-trend signals.
 - **Arduino sensor streaming** sketch for hardware readings over serial.
 
 <p align="center">
@@ -41,16 +45,13 @@ Current capabilities:
 | Data prep | Python, Pillow | Clean class folders, resize images, create train/val/test splits |
 | Evaluation | scikit-learn, matplotlib | Precision, recall, F1, confusion matrix |
 | Inference | OpenCV, PyTorch | Run on image, video, or webcam frames |
+| Safety logic | Python dataclasses | Transparent risk and flashover scoring |
 | Hardware | Arduino-style serial sketch | Stream simple sensor readings to the AI layer |
 | Testing | pytest | Keep core risk-scoring logic stable |
 
 ---
 
 ## System architecture
-
-<p align="center">
-  <img src="media/training_flow.png" alt="fAIre training flow" width="820">
-</p>
 
 ```text
 Camera / robot sensors
@@ -62,7 +63,7 @@ Frame preprocessing + sensor parsing
 PyTorch MobileNetV2 classifier
         |
         v
-Risk engine: model confidence + sensor severity
+Risk engine: model confidence + sensor severity + flashover index
         |
         v
 Search-priority alert for operator
@@ -75,6 +76,7 @@ More detail:
 - [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)
 - [`docs/TRAINING.md`](docs/TRAINING.md)
 - [`docs/HARDWARE.md`](docs/HARDWARE.md)
+- [`docs/FLASHOVER.md`](docs/FLASHOVER.md)
 
 ---
 
@@ -85,9 +87,9 @@ fAIre---Search-and-Rescue/
 ├── configs/              # example training configuration
 ├── data/                 # dataset preparation script and dataset notes
 ├── demo/                 # evaluation and threshold-tuning scripts
-├── docs/                 # architecture, training, and hardware writeups
+├── docs/                 # architecture, training, hardware, flashover notes
 ├── hardware/             # Arduino sensor-streaming sketch
-├── inference/            # model inference and risk scoring
+├── inference/            # model inference, risk scoring, flashover index
 ├── media/                # diagrams and generated example visuals
 ├── models/               # local model outputs; trained weights are gitignored
 ├── tests/                # pytest tests
@@ -253,13 +255,15 @@ Example alert shape:
   "confidence": 0.86,
   "risk_score": 0.78,
   "priority": "high",
+  "flashover_index": 0.62,
+  "flashover_level": "guarded",
   "message": "HIGH search priority: possible distress detected."
 }
 ```
 
 ---
 
-## Risk scoring
+## Risk and flashover scoring
 
 The model confidence is not the whole system. A robot can also use sensor values to make the alert more useful.
 
@@ -267,13 +271,31 @@ The model confidence is not the whole system. A robot can also use sensor values
   <img src="media/risk_score_example.png" alt="Risk score example" width="760">
 </p>
 
-The current risk score is intentionally simple and readable:
+The current alert score is intentionally simple and readable:
 
 ```text
-risk_score = 0.70 * vision_confidence + 0.30 * sensor_severity
+risk_score = 0.60 * vision_confidence + 0.25 * sensor_severity + 0.15 * flashover_index
 ```
 
-Where sensor severity is based on the strongest available environmental signal such as smoke, temperature, or CO-style sensor readings.
+The flashover index is a project-defined decimal score from `0.00` to `1.00`. It studies the available fire-environment signals and tries to answer a narrower question:
+
+> Are heat, smoke, gas chemistry, oxygen, and temperature trend moving toward rapid fire growth?
+
+<p align="center">
+  <img src="media/flashover_index.png" alt="Flashover warning index" width="760">
+</p>
+
+Signals used by the flashover module:
+
+- **Temperature / heat flux** — the most important flashover drivers.
+- **Smoke** — a proxy for pyrolysis, visibility loss, and fire growth.
+- **CO** — a toxic incomplete-combustion gas.
+- **CO2** — a combustion product that can indicate fire involvement and oxygen displacement.
+- **VOC / hydrocarbons** — combustible vapor signals from heating materials.
+- **Oxygen percentage** — falling oxygen can indicate a dangerous enclosed atmosphere.
+- **Temperature rise rate** — fast changes can matter as much as the current value.
+
+This is not a certified firefighting instrument. It is a transparent prototype model that can be improved with better sensors, better calibration, and real fire-test data.
 
 ---
 
@@ -288,9 +310,10 @@ Implemented:
 - Threshold-tuning demo
 - Image/video/webcam inference
 - Risk-scoring module
+- Flashover warning index module
 - Arduino sensor-streaming sketch
-- Unit tests for risk scoring
-- Architecture/training/hardware docs
+- Unit tests for risk and flashover scoring
+- Architecture/training/hardware/flashover docs
 
 Not committed to the public repo:
 
@@ -308,6 +331,7 @@ That keeps the repo lightweight and avoids publishing large files or unverified 
 - Train and evaluate the MobileNetV2 classifier on the held-out test split.
 - Replace frame-level classification with object detection for bounding boxes.
 - Add thermal-camera input.
+- Add calibrated gas sensors for CO, CO2, oxygen, and VOC/combustible gas signals.
 - Parse live serial sensor values directly during inference.
 - Build a small web dashboard for live alerts.
 - Test edge deployment on Raspberry Pi or Jetson-style hardware.
@@ -316,4 +340,4 @@ That keeps the repo lightweight and avoids publishing large files or unverified 
 
 ## Project origin
 
-This project began as a self-taught robotics build and grew into a more complete AI robotics system. The goal is to keep improving it piece by piece: better data, better sensing, better model evaluation, and eventually a more realistic search-and-rescue demo.
+This project began as a self-taught robotics build and grew into a more complete AI robotics system. The goal is to keep improving it piece by piece: better data, better sensing, better model evaluation, better flashover awareness, and eventually a more realistic search-and-rescue demo.
