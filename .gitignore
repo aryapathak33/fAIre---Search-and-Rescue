@@ -1,0 +1,31 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.env
+
+# Model weights and generated outputs
+models/*.pt
+models/*.pth
+models/*.onnx
+!models/.gitkeep
+media/*.mp4
+media/*.avi
+media/*.mov
+media/prediction*.jpg
+media/confusion_matrix.png
+media/metrics.json
+!media/.gitkeep
+
+# Large datasets
+/data/raw/
+/data/train/
+/data/val/
+/data/test/
+/data/processed/
+
+# OS/editor
+.DS_Store
+.vscode/
+.idea/

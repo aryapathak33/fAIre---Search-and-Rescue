@@ -1,60 +1,56 @@
-# How to put this on GitHub (step by step)
+# How to push these upgrades to GitHub
 
-This file is just for you — you can delete it before/after publishing. It walks
-through getting this folder onto GitHub and embedding your demo video.
+## Option A: easiest GitHub website method
 
-## Before you start
-- Make a GitHub account if you don't have one (github.com).
-- Have your real `.py` files and trained model ready to copy in.
-- Have a short demo video (aim for 30–90s).
+1. Open your repo: `aryapathak33/fAIre---Search-and-Rescue`.
+2. Click the file you want to replace, for example `README.md`.
+3. Click the pencil icon.
+4. Paste the replacement content.
+5. Commit with a clear message like `Update README with system overview`.
+6. Repeat for the core files.
 
-## Option A — Upload through the website (easiest, no command line)
-1. On github.com, click **+ → New repository**.
-2. Name it `fire-search-rescue`, set it **Public**, do NOT add a README
-   (this folder already has one). Click **Create repository**.
-3. On the new repo page, click **uploading an existing file**.
-4. Drag in everything from this folder. Commit.
-5. Open each file with `[FILL IN]` placeholders (start with `README.md`) using the
-   pencil ✏️ icon, fill in your real details, and commit.
+Recommended order:
 
-## Option B — Command line (git)
+1. `requirements.txt`
+2. `README.md`
+3. `docs/ARCHITECTURE.md`
+4. `docs/TRAINING.md`
+5. `docs/HARDWARE.md`
+6. `training/train.py`
+7. `data/prepare_data.py`
+8. `inference/risk_engine.py`
+9. `inference/detect.py`
+10. `demo/evaluate.py`
+11. `hardware/fire_robot_controller.ino`
+12. `tests/test_risk_engine.py`
+
+## Option B: VS Code / terminal method
+
+Clone your repo:
+
 ```bash
-cd fire-search-rescue
-git init
-git add .
-git commit -m "Initial commit: FIRE search & rescue AI"
-git branch -M main
-git remote add origin https://github.com/USERNAME/fire-search-rescue.git
-git push -u origin main
+git clone https://github.com/aryapathak33/fAIre---Search-and-Rescue.git
+cd fAIre---Search-and-Rescue
 ```
 
-## Adding your real code
-- Training code  -> `training/train.py`
-- Inference code -> `inference/detect.py`
-- Data prep      -> `data/prepare_data.py`
-- Arduino sketches -> `hardware/`
-- Trained weights -> `models/`  (if the file is >100 MB, don't commit it — upload it
-  to a GitHub **Release** or Google Drive and link it in the README instead)
+Copy these replacement files into the matching folders.
 
-After pasting your code in, come back and I'll help you clean it up, add comments,
-and write docstrings so it reads well.
+Then run:
 
-## Embedding the demo video
-GitHub plays videos **uploaded directly to GitHub**, not YouTube links, inline.
-Two good approaches:
+```bash
+git status
+git add .
+git commit -m "Build out fAIre training inference and hardware pipeline"
+git push origin main
+```
 
-1. **Autoplay GIF at the top (best first impression).** Convert a few seconds of your
-   demo to a GIF, name it `demo.gif`, put it in `media/`. The README already points
-   to `media/demo.gif`, so it'll show up automatically and autoplay silently.
+## Test locally before pushing
 
-2. **Full video.** Either:
-   - Drag the `.mp4` straight into the README while editing on github.com (works if
-     under ~10 MB free / 100 MB Pro) — GitHub hosts it and renders a player, OR
-   - Upload to YouTube/Loom and paste the link next to the ▶️ in the README as a
-     clickable thumbnail.
+```bash
+python -m venv .venv
+.venv\Scripts\Activate.ps1
+pip install -r requirements.txt
+pytest -v
+```
 
-## Make it look finished
-- Click the ⚙️ next to **About** (top right of the repo) → add a one-line description
-  and topics like `computer-vision`, `robotics`, `tensorflow`, `search-and-rescue`.
-- **Pin** the repo on your GitHub profile (Customize your pins) so it shows first.
-- Make sure the link on your resume points here: `github.com/USERNAME/fire-search-rescue`.
+Training will only work once you add real data in the expected folder format.

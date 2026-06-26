@@ -1,0 +1,9 @@
+{
+  "data": "data",
+  "epochs": 10,
+  "batch_size": 16,
+  "learning_rate": 0.001,
+  "image_size": 224,
+  "model": "mobilenet_v2",
+  "objective": "recall_first_search_and_rescue"
+}
