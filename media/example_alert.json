@@ -1,0 +1,13 @@
+{
+  "alert": true,
+  "label": "distress",
+  "confidence": 0.86,
+  "risk_score": 0.78,
+  "priority": "high",
+  "message": "HIGH search priority: possible distress detected.",
+  "sensors": {
+    "temperature_c": 45.0,
+    "smoke_raw": 620,
+    "distance_cm": 82.0
+  }
+}

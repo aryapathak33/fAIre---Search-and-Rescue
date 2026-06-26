@@ -38,7 +38,7 @@ def clamp(value: float, low: float = 0.0, high: float = 1.0) -> float:
 
 
 def normalize_temperature(temp_c: Optional[float]) -> float:
-    """Convert temperature to 0-1 severity. Conservative placeholder scale."""
+    """Convert temperature to a 0-1 heat-severity estimate."""
     if temp_c is None:
         return 0.0
     # 25C normal-ish, 80C severe for electronics/robot proximity.

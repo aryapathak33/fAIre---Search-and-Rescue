@@ -1,94 +1,118 @@
-# Architecture
+# fAIre architecture
 
-fAIre is built as an end-to-end robotics perception pipeline rather than a standalone notebook. The goal is to show how camera frames and sensor readings move through the system until they become a useful firefighter alert.
+fAIre is organized as a small robotics perception system. The code is split into independent layers so the robot side, AI side, and alert side can each improve without turning the project into one giant script.
 
-## End-to-end flow
+<p align="center">
+  <img src="../media/system_overview.png" alt="fAIre system overview" width="820">
+</p>
+
+## 1. Inputs
+
+The system starts with two kinds of input:
+
+- **Camera frames** from an image, video file, webcam, or robot-mounted camera.
+- **Sensor readings** from a microcontroller, such as temperature, smoke/gas, CO-style analog values, or distance.
+
+The camera gives visual context. The sensors provide environmental context.
+
+## 2. Data preparation
+
+`data/prepare_data.py` converts raw class folders into a reproducible train/validation/test split.
 
 ```text
-[robot camera + sensors]
-          |
-          v
-[data preprocessing]
-  - resize image
-  - normalize pixels
-  - optional augmentation during training
-          |
-          v
-[vision model]
-  - MobileNetV2 transfer-learning classifier
-  - outputs class probabilities
-          |
-          v
-[risk engine]
-  - combines model confidence + sensor severity
-  - prioritizes recall over raw accuracy
-          |
-          v
-[real-time alert]
-  - JSON-style alert stream
-  - annotated image/video output
-  - future dashboard/radio bridge
+data/raw/class_name/*.jpg
+        |
+        v
+data/train/class_name/*.jpg
+data/val/class_name/*.jpg
+data/test/class_name/*.jpg
 ```
 
-## Components
+The training and evaluation scripts use `torchvision.datasets.ImageFolder`, so every folder name becomes a class label.
 
-### 1. Sensing layer
+## 3. Training layer
 
-The hardware side can include a camera, ultrasonic distance sensing, and fire-scene environmental sensors such as smoke, temperature, or gas sensors. The Arduino sketch in `hardware/` streams sensor values over serial so the perception code can eventually combine visual confidence with physical risk indicators.
+`training/train.py` trains a MobileNetV2 image classifier using PyTorch transfer learning.
 
-### 2. Data layer
+Why MobileNetV2:
 
-`data/prepare_data.py` converts raw class folders into a reproducible train/validation/test split. This matters because a recruiter or reviewer can see that the model is not being evaluated on images it already saw during training.
+- small enough for robotics/edge experiments,
+- strong enough for a first vision prototype,
+- pretrained on general image features,
+- easy to fine-tune on a custom dataset.
 
-### 3. Model layer
+The script saves the best checkpoint by validation accuracy and writes lightweight metadata beside the model.
 
-The public code uses MobileNetV2 transfer learning. That is a practical design choice for a robotics prototype because MobileNet is lightweight, pretrained, and much easier to deploy on edge hardware than a giant model.
+## 4. Evaluation layer
 
-### 4. Inference layer
+`demo/evaluate.py` runs the trained checkpoint on the held-out test split and reports:
 
-`inference/detect.py` loads the trained checkpoint and runs detection on:
+- precision,
+- recall,
+- F1 score,
+- per-class support,
+- confusion matrix.
 
-- one image,
+For this project, recall is especially important because a missed person/distress frame is more serious than an extra false alarm.
+
+## 5. Inference layer
+
+`inference/detect.py` loads the saved PyTorch checkpoint and runs inference on:
+
+- a still image,
 - a video file,
-- or a webcam/live stream.
+- or a webcam stream.
 
-The current version is frame-level classification. It answers: **does this frame likely contain the target condition?** The next upgrade is object detection so the system can also answer: **where in the frame is the person or hazard?**
+For every frame, the script computes class probabilities and emits a structured event. If an output path is provided, it also saves an annotated image or video.
 
-### 5. Risk / alert layer
+## 6. Risk layer
 
-`inference/risk_engine.py` is intentionally separate from the CNN. The CNN predicts visual confidence. The risk engine turns that confidence into an operational priority using a simple rule:
+`inference/risk_engine.py` keeps alert logic separate from the model.
 
-> High visual confidence + severe sensor readings = higher search priority.
+The CNN answers:
 
-That separation makes the project look more like a real system and less like a single ML script.
+> What does the frame look like?
 
-## Design decisions
+The risk engine answers:
 
-### Recall over precision
+> How urgent is this frame when sensor severity is included?
 
-In normal classification, people often chase accuracy. In search-and-rescue, accuracy can be misleading. If a person is present and the robot misses them, that is much worse than sending a firefighter to double-check a false alarm.
+Current formula:
 
-So the model should be tuned with this priority:
+```text
+risk_score = 0.70 * vision_confidence + 0.30 * sensor_severity
+```
 
-1. Maximize recall: catch as many true distress/person frames as possible.
-2. Keep precision acceptable: avoid too many false alarms.
-3. Report F1 as the balance point.
+This is deliberately simple. It is easy to test, easy to tune, and easy to replace with a better model later.
 
-### Transfer learning over training from scratch
+## 7. Hardware layer
 
-The dataset for a student robotics project will not be millions of images. Transfer learning is the right engineering move because the CNN already understands generic visual features like edges, textures, and shapes. The project only needs to fine-tune the final layers for the fire/search-and-rescue task.
+`hardware/fire_robot_controller.ino` streams sensor values over serial in this format:
 
-### Lightweight model over huge model
+```text
+temperature_c,smoke_raw,distance_cm
+```
 
-A robot has power, latency, and compute constraints. MobileNetV2 is a reasonable prototype choice because it is small enough to move toward Raspberry Pi / Jetson-style deployment while still being strong enough for image classification.
+That lets the Python side combine camera confidence with physical sensor readings.
 
-## Recruiter takeaway
+## Design choices
 
-This repo demonstrates more than model training. It shows system thinking:
+### Recall-first evaluation
 
-- dataset preparation,
-- transfer learning,
-- evaluation with real metrics,
-- threshold tuning for a safety-oriented objective,
-- image/video inference,
-- and hardware-aware alerting logic.
+A search-and-rescue robot should be cautious. If the model sees something that may be a person or distress signal, the system should prefer surfacing that area for review instead of silently ignoring it.
+
+### Modular pipeline
+
+The project is split into data, training, evaluation, inference, risk scoring, and hardware folders. That makes it easier to replace individual pieces later.
+
+### Lightweight model
+
+MobileNetV2 is a practical first model because it supports real-time experimentation better than a huge network and keeps the path open for edge deployment.
+
+## Future architecture upgrades
+
+- Object detection instead of frame classification.
+- Live serial parsing inside the inference loop.
+- Thermal-camera stream support.
+- Robot navigation loop using obstacle distance.
+- Dashboard for operator alerts.

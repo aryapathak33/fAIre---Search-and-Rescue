@@ -1,26 +1,20 @@
 # Training process
 
-This document explains how fAIre moves from a first prototype classifier to a reproducible training pipeline.
+This document explains how fAIre moves from raw images to a trained, evaluated PyTorch classifier.
 
-```mermaid
-flowchart LR
-    A[Raw fire/search images] --> B[Label class folders]
-    B --> C[Train/val/test split]
-    C --> D[Augmentation]
-    D --> E[MobileNetV2 transfer learning]
-    E --> F[Held-out evaluation]
-    F --> G[Threshold tuning]
-```
+<p align="center">
+  <img src="../media/training_flow.png" alt="fAIre training flow" width="820">
+</p>
 
-## 1. Starting point: Teachable Machine
+## 1. Prototype idea
 
-The first version of the project used Google Teachable Machine to quickly test whether an image classifier could separate target fire/search scenes from background images. That was useful because it proved the idea quickly without needing a full ML codebase.
+The first version of fAIre used a simple image-classification workflow to test whether fire/search-scene images could be separated from background images. That prototype proved the idea quickly, but a real repo needs more control over training, data splits, checkpoints, and evaluation.
 
-The limitation was control. Teachable Machine is good for prototypes, but it hides many important details: data splits, augmentations, checkpointing, evaluation metrics, and confidence-threshold tuning. The current repo moves those pieces into Python so the training process is reproducible and easier to explain.
+The current version moves the training pipeline into Python.
 
-## 2. Dataset format
+## 2. Dataset layout
 
-The training code uses ImageFolder format:
+The model expects `ImageFolder` format:
 
 ```text
 data/
@@ -35,41 +29,43 @@ data/
     no_distress/
 ```
 
-Each folder name becomes a class label. Large datasets should not be committed to GitHub. Keep the raw dataset locally or in cloud storage, and commit only a few safe sample images showing the expected format.
+Each subfolder is treated as a class label. The class names can change, but the same labels must exist across train, validation, and test.
 
-## 3. Data preparation
+## 3. Prepare data
 
-Use:
+Run:
 
 ```bash
 python data/prepare_data.py --raw data/raw --out data --val-split 0.15 --test-split 0.15
 ```
 
-This creates train, validation, and test folders. The test folder is held out until the end so the final numbers represent new images the model did not train on.
+The script:
 
-## 4. Model choice
+- scans raw class folders,
+- shuffles with a fixed seed,
+- creates train/validation/test splits,
+- resizes images to a square model input,
+- keeps the split reproducible.
 
-The current training code uses **MobileNetV2 transfer learning**.
+## 4. Model
 
-Why this makes sense:
+The training script uses **MobileNetV2 transfer learning** through PyTorch and torchvision.
 
-- It is pretrained on a large image dataset, so it already understands general visual features.
-- It is lightweight enough for a robotics/edge-computing roadmap.
-- It is realistic for a project with hundreds or thousands of labeled images.
-- It is easier to reproduce than a custom architecture.
+Transfer learning is the right fit because fAIre is a prototype dataset, not a million-image research dataset. MobileNetV2 already understands general image features such as edges, shapes, and textures. fAIre fine-tunes the classifier head for the project-specific labels.
 
 ## 5. Augmentation
 
-During training, the script applies light augmentations:
+Training uses light augmentation:
 
-- horizontal flip,
+- horizontal flips,
 - brightness/contrast/saturation jitter,
-- small rotation,
-- resize and normalization.
+- small rotations,
+- resize,
+- ImageNet normalization.
 
-This helps the model generalize across changing lighting, camera angle, smoke, and motion blur.
+This helps the model handle imperfect camera angles, lighting changes, and noisy fire-scene visuals.
 
-## 6. Training
+## 6. Train
 
 Run:
 
@@ -77,18 +73,30 @@ Run:
 python training/train.py --data data --epochs 10 --out models/fire_model.pt
 ```
 
-Optional faster first run:
+Optional faster run:
 
 ```bash
 python training/train.py --data data --epochs 5 --freeze-backbone --out models/fire_model.pt
 ```
 
-The script saves:
+Outputs:
 
-- `models/fire_model.pt` — trained PyTorch checkpoint,
-- `models/fire_model.json` — metadata such as classes, image size, and validation accuracy.
+```text
+models/fire_model.pt
+models/fire_model.json
+```
 
-## 7. Evaluation
+The checkpoint stores:
+
+- model name,
+- trained weights,
+- class labels,
+- image size,
+- normalization values,
+- validation history,
+- best validation accuracy.
+
+## 7. Evaluate
 
 Run:
 
@@ -96,37 +104,35 @@ Run:
 python demo/evaluate.py --data data --weights models/fire_model.pt --threshold 0.50
 ```
 
-The output includes:
-
-- precision,
-- recall,
-- F1,
-- support per class,
-- confusion matrix.
-
-It also saves:
+Outputs:
 
 ```text
 media/confusion_matrix.png
 media/metrics.json
 ```
 
-## 8. Why recall matters most
+Metrics reported:
 
-For fAIre, recall is the key metric. A high-recall model is better at catching true positive distress/person frames. Precision still matters, because too many false alarms can distract firefighters, but a false negative is the more dangerous failure mode.
+- precision,
+- recall,
+- F1,
+- support,
+- confusion matrix.
 
-That is why the project should report precision and recall separately instead of hiding behind accuracy.
+## 8. Threshold tuning
 
-## 9. What to write in the README after evaluation
+`demo/tune_threshold.py` shows how to choose a confidence threshold with a recall-first objective.
 
-After running evaluation, update the README with the real values:
+Run the built-in demo:
 
-```text
-Precision: <measured value>
-Recall: <measured value>
-F1: <measured value>
-Test images: <number of images in data/test>
-Hardware: <device used for inference/evaluation>
+```bash
+python demo/tune_threshold.py --demo --min-precision 0.80
 ```
 
-Do not publish made-up metrics. Honest measured numbers are stronger than fake perfect numbers.
+The idea is simple: choose the lowest threshold that catches more true positives while keeping false alarms within a reasonable range.
+
+## 9. Why recall matters
+
+For fAIre, recall matters more than plain accuracy. If the robot misses a true distress/person frame, the system fails in the worst way. A false positive is annoying, but a false negative is dangerous.
+
+That is why the project reports precision, recall, and F1 separately.

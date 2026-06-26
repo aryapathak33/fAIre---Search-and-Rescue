@@ -2,22 +2,27 @@
 
 The hardware side of fAIre is the robot/sensor layer that feeds the AI pipeline.
 
+<p align="center">
+  <img src="../media/system_overview.png" alt="fAIre hardware and AI overview" width="820">
+</p>
+
 ## Prototype concept
 
-The system is designed around a small rover or portable robot platform that can move into an unsafe area before a firefighter enters. The robot streams camera frames and sensor readings to the perception pipeline.
+The project is designed around a small rover or portable robot platform that can move or be placed into a risky area before a human enters. The robot streams camera frames and sensor readings to the software pipeline.
 
-## Suggested component table
+The public repo focuses on the reusable software and sensor interface. The exact physical build can change depending on available parts.
 
-Replace the details below with your exact parts once you confirm them.
+## Component map
 
-| Component | Role in the system | Notes |
-|---|---|---|
-| Arduino / microcontroller | Reads low-level sensors | Streams values over serial |
-| Camera | Provides frames for the CNN | USB camera, Pi camera, or phone/camera feed |
-| Ultrasonic distance sensor | Estimates distance to obstacle/wall | Useful for rover navigation prototype |
-| Smoke / gas sensor | Adds environmental risk signal | Analog value can be normalized in software |
-| Temperature sensor | Adds heat severity signal | Optional, but useful for risk scoring |
-| Rover chassis / motors | Physical mobility | Can be documented even before full autonomy |
+| Component | Role in the system |
+|---|---|
+| Microcontroller | Reads low-level sensors and streams values over serial |
+| Camera | Provides image/video frames for the CNN pipeline |
+| Distance sensor | Estimates obstacle or wall distance for basic spatial awareness |
+| Smoke/gas sensor | Adds environmental risk context |
+| Temperature sensor | Adds heat severity context |
+| Rover chassis / motors | Mobility layer for the robot prototype |
+| Laptop / edge computer | Runs training, inference, or dashboard software |
 
 ## Serial sensor stream
 
@@ -27,32 +32,52 @@ The included Arduino sketch prints comma-separated sensor readings:
 temperature_c,smoke_raw,distance_cm
 ```
 
-Example:
+Example stream:
 
 ```text
-31.2,420,85.4
+31.20,420,85.40
+32.15,438,79.10
+33.05,461,74.55
 ```
 
-The inference code can later parse that stream and pass the values into `inference/risk_engine.py`.
+The Python risk engine can combine those values with vision confidence.
 
-## 3D / spatial sensing story
+## Arduino sketch
 
-If your original prototype used sensor sweeps to build a rough 3D map, explain it like this:
+File:
 
-> The early prototype sampled distance readings at different robot/sensor angles and used those readings to reconstruct a rough spatial profile of the environment. Instead of relying only on a camera frame, the robot could estimate where walls or obstacles were relative to the sensor. That early experiment motivated the current system design: combine visual AI with physical sensor data instead of treating the model as the whole robot.
+```text
+hardware/fire_robot_controller.ino
+```
 
-Add your exact method once you verify it:
+The sketch includes:
 
-- what sensor you used,
-- how it moved or scanned,
-- what each reading represented,
-- and how you visualized/reconstructed space.
+- ultrasonic distance measurement,
+- analog smoke/gas reading,
+- analog temperature reading,
+- serial output every 250 ms.
 
-## Media to add
+The conversion formulas are intentionally simple so the sketch stays easy to modify for different sensors.
 
-Add these to `media/`:
+## Hardware-to-software flow
 
-- photo of the robot,
-- wiring photo,
-- screenshot of serial output,
-- demo GIF or short video.
+```text
+Sensors + camera
+      |
+      v
+Microcontroller serial stream + video frame
+      |
+      v
+Python inference script
+      |
+      v
+Risk score + priority alert
+```
+
+## Future hardware upgrades
+
+- Thermal camera input.
+- Better calibrated gas/CO sensor readings.
+- Motor-control loop for autonomous scanning.
+- Live serial parsing inside `inference/detect.py`.
+- On-device inference using Raspberry Pi or Jetson-style hardware.

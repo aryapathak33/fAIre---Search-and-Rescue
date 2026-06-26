@@ -1,9 +1,17 @@
 {
-  "data": "data",
+  "project": "fAIre",
+  "model": "mobilenet_v2",
+  "framework": "pytorch",
+  "data_root": "data",
+  "image_size": 224,
   "epochs": 10,
   "batch_size": 16,
   "learning_rate": 0.001,
-  "image_size": 224,
-  "model": "mobilenet_v2",
-  "objective": "recall_first_search_and_rescue"
+  "augmentation": [
+    "horizontal_flip",
+    "color_jitter",
+    "small_rotation"
+  ],
+  "objective": "recall_first_search_and_rescue",
+  "positive_class_hint": "distress"
 }
