@@ -29,3 +29,6 @@ media/metrics.json
 .DS_Store
 .vscode/
 .idea/
+/data/raw_sanity/
+/data/sanity/
+media/sanity_eval/

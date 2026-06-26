@@ -31,21 +31,34 @@ data/
 
 Each subfolder is treated as a class label. The class names can change, but the same labels must exist across train, validation, and test.
 
-## 3. Prepare data
+## 3. Prepare and validate data
 
 Run:
 
 ```bash
 python data/prepare_data.py --raw data/raw --out data --val-split 0.15 --test-split 0.15
+python data/validate_dataset.py --data data
 ```
 
-The script:
+The preparation script:
 
 - scans raw class folders,
 - shuffles with a fixed seed,
 - creates train/validation/test splits,
 - resizes images to a square model input,
 - keeps the split reproducible.
+
+The validation script checks that the split folders exist, class labels match across splits, images are readable, class counts are visible, and exact duplicate files are flagged before training.
+
+For a quick end-to-end software check without private images, the repo can create a tiny generated dataset:
+
+```bash
+python data/make_sanity_dataset.py --out data/raw_sanity --images-per-class 60
+python data/prepare_data.py --raw data/raw_sanity --out data/sanity
+python data/validate_dataset.py --data data/sanity
+```
+
+The synthetic sanity dataset is not a benchmark. It exists only to verify that data prep, training, and evaluation run correctly.
 
 ## 4. Model
 
@@ -119,7 +132,17 @@ Metrics reported:
 - support,
 - confusion matrix.
 
-## 8. Threshold tuning
+## 8. Optional ONNX export
+
+After training and evaluation, the PyTorch checkpoint can be exported for future edge-runtime experiments:
+
+```bash
+python training/export_onnx.py --weights models/fire_model.pt --out models/fire_model.onnx
+```
+
+This does not replace evaluation. It is just a deployment-prep step once the model is trained.
+
+## 9. Threshold tuning
 
 `demo/tune_threshold.py` shows how to choose a confidence threshold with a recall-first objective.
 
@@ -131,7 +154,7 @@ python demo/tune_threshold.py --demo --min-precision 0.80
 
 The idea is simple: choose the lowest threshold that catches more true positives while keeping false alarms within a reasonable range.
 
-## 9. Why recall matters
+## 10. Why recall matters
 
 For fAIre, recall matters more than plain accuracy. If the robot misses a true distress/person frame, the system fails in the worst way. A false positive is annoying, but a false negative is dangerous.
 

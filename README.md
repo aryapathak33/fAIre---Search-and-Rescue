@@ -6,10 +6,17 @@ fAIre started as a hands-on robotics build and gradually evolved into a full sof
 
 ## Demo video
 
-<!-- Replace the YouTube URL below with your uploaded demo video link. -->
-[![Watch Demo Video](media/demo_thumbnail.jpg)](https://youtu.be/ll3O9wNHNsc))
+**Click the image below to watch the demo.**
 
-[Watch the demo video](https://youtu.be/ll3O9wNHNsc))
+<p align="center">
+  <a href="https://youtu.be/ll3O9wNHNsc">
+    <img src="media/demo_thumbnail.jpg" alt="Watch the fAIre demo video" width="760">
+  </a>
+</p>
+
+<p align="center">
+  <a href="https://youtu.be/ll3O9wNHNsc"><strong>▶ Watch the demo video on YouTube</strong></a>
+</p>
 
 ---
 
@@ -21,12 +28,15 @@ Current capabilities:
 
 - **PyTorch image classification** using MobileNetV2 transfer learning.
 - **Dataset preparation** from raw class folders into train/validation/test splits.
+- **Dataset validation** for class counts, image readability, split consistency, and duplicates.
+- **Sanity-check dataset generation** so the training pipeline can be tested without publishing private images.
 - **Evaluation** with precision, recall, F1 score, support, and confusion matrix output.
 - **Threshold tuning** for a recall-first operating point.
 - **Inference** on image files, video files, or webcam streams using OpenCV.
 - **Risk scoring** that combines model confidence with environmental sensor readings.
 - **Flashover warning index** that estimates rapid fire-growth risk from heat, smoke, gas, oxygen, and temperature-trend signals.
 - **Arduino sensor streaming** for hardware readings over serial.
+- **Optional ONNX export** for future edge-deployment experiments.
 
 <p align="center">
   <img src="media/concept_demo.gif" alt="fAIre concept demo animation" width="760">
@@ -49,11 +59,13 @@ The project is still a prototype. It is not a certified firefighting tool, and i
 | Training | **PyTorch**, torchvision | Transfer learning, checkpointing, reproducible model code |
 | Model | **MobileNetV2** | Lightweight CNN for robotics-style vision experiments |
 | Data prep | Python, Pillow | Clean class folders, resize images, create train/val/test splits |
+| Dataset QA | Python, Pillow, SHA-1 hashing | Validate split structure, corrupt images, and duplicates |
 | Evaluation | scikit-learn, matplotlib | Precision, recall, F1, confusion matrix |
 | Inference | OpenCV, PyTorch | Run on image, video, or webcam frames |
 | Risk logic | Python dataclasses | Transparent risk and flashover scoring |
 | Hardware | Arduino-style serial sketch | Stream simple sensor readings to the AI layer |
-| Testing | pytest | Keep core scoring logic stable |
+| Testing | pytest | Keep core scoring and data helpers stable |
+| Deployment prep | ONNX export script | Prepare trained model for future edge-runtime tests |
 
 ---
 
@@ -87,6 +99,7 @@ More detail:
 - [`docs/TRAINING.md`](docs/TRAINING.md)
 - [`docs/HARDWARE.md`](docs/HARDWARE.md)
 - [`docs/FLASHOVER.md`](docs/FLASHOVER.md)
+- [`docs/DATASET.md`](docs/DATASET.md)
 
 ---
 
@@ -95,15 +108,15 @@ More detail:
 ```text
 fAIre---Search-and-Rescue/
 ├── configs/              # example training configuration
-├── data/                 # dataset preparation script and dataset notes
+├── data/                 # dataset preparation, validation, and sanity-data scripts
 ├── demo/                 # evaluation and threshold-tuning scripts
-├── docs/                 # architecture, training, hardware, flashover notes
+├── docs/                 # architecture, training, hardware, flashover, dataset notes
 ├── hardware/             # Arduino sensor-streaming sketch
 ├── inference/            # model inference, risk scoring, flashover index
 ├── media/                # diagrams and generated example visuals
 ├── models/               # local model outputs; trained weights are gitignored
 ├── tests/                # pytest tests
-├── training/             # PyTorch transfer-learning pipeline
+├── training/             # PyTorch training and export utilities
 ├── requirements.txt
 └── README.md
 ```
@@ -145,7 +158,7 @@ pytest -v
 
 ---
 
-## Dataset format
+## Dataset workflow
 
 The training code uses the standard `torchvision.datasets.ImageFolder` layout:
 
@@ -162,14 +175,6 @@ data/
     └── no_distress/
 ```
 
-The class names can be changed as long as the same folders exist in `train`, `val`, and `test`.
-
-To split raw class folders into train/validation/test:
-
-```bash
-python data/prepare_data.py --raw data/raw --out data --val-split 0.15 --test-split 0.15
-```
-
 Expected raw format:
 
 ```text
@@ -178,11 +183,39 @@ data/raw/
 └── no_distress/
 ```
 
+Split raw class folders into train/validation/test:
+
+```bash
+python data/prepare_data.py --raw data/raw --out data --val-split 0.15 --test-split 0.15
+```
+
+Validate the generated dataset before training:
+
+```bash
+python data/validate_dataset.py --data data
+```
+
 Large datasets should stay outside GitHub. The repo keeps the code and format, not the full image collection.
 
 ---
 
-## Train the model
+## Sanity-check the full training pipeline
+
+The repo includes a tiny synthetic dataset generator so the training pipeline can be tested without committing private images or pretending the synthetic data is a real benchmark.
+
+```bash
+python data/make_sanity_dataset.py --out data/raw_sanity --images-per-class 60
+python data/prepare_data.py --raw data/raw_sanity --out data/sanity --val-split 0.15 --test-split 0.15
+python data/validate_dataset.py --data data/sanity
+python training/train.py --data data/sanity --epochs 2 --freeze-backbone --out models/sanity_fire_model.pt
+python demo/evaluate.py --data data/sanity --weights models/sanity_fire_model.pt --out-dir media/sanity_eval
+```
+
+This is a smoke test for the software pipeline. It should not be reported as real fire-scene performance.
+
+---
+
+## Train the real model
 
 ```bash
 python training/train.py --data data --epochs 10 --out models/fire_model.pt
@@ -209,6 +242,12 @@ Saved outputs:
 ```text
 models/fire_model.pt      # PyTorch checkpoint
 models/fire_model.json    # lightweight metadata
+```
+
+Optional ONNX export after training:
+
+```bash
+python training/export_onnx.py --weights models/fire_model.pt --out models/fire_model.onnx
 ```
 
 ---
@@ -316,14 +355,17 @@ Implemented:
 - End-to-end folder structure
 - PyTorch training pipeline
 - Data split/preprocessing script
+- Dataset validation script
+- Synthetic sanity dataset generator
 - Evaluation and confusion matrix generation
 - Threshold-tuning demo
 - Image/video/webcam inference
 - Risk-scoring module
 - Flashover warning index module
 - Arduino sensor-streaming sketch
-- Unit tests for risk and flashover scoring
-- Architecture/training/hardware/flashover docs
+- Optional ONNX export utility
+- Unit tests for risk, flashover, and dataset helpers
+- Architecture/training/hardware/flashover/dataset docs
 
 Not committed to the public repo:
 
@@ -339,6 +381,7 @@ That keeps the repo lightweight and avoids publishing large files or unverified 
 
 - Collect a cleaner fire/search-scene dataset.
 - Train and evaluate the MobileNetV2 classifier on the held-out test split.
+- Add the measured precision, recall, F1, and confusion matrix once real test data is available.
 - Replace frame-level classification with object detection for bounding boxes.
 - Add thermal-camera input.
 - Add calibrated gas sensors for CO, CO2, oxygen, and VOC/combustible gas signals.
