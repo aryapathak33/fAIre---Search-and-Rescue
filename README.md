@@ -7,7 +7,7 @@ fAIre started as a hands-on robotics build and gradually evolved into a full sof
 ## Demo video
 
 <!-- Replace the YouTube URL below with your uploaded demo video link. -->
-[![Watch Demo Video](media/watch_demo_video.png)](https://youtu.be/ll3O9wNHNsc))
+[![Watch Demo Video](media/[watch_demo_video.png])](https://youtu.be/ll3O9wNHNsc))
 
 [Watch the demo video](https://youtu.be/ll3O9wNHNsc))
 
